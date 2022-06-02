@@ -1,80 +1,124 @@
 #pragma once
-#include <utility>
-#include <iterator>
 
-template <class Iterator, class Container>
-class EnumerateProxy {
-  Iterator begin_;
-  Iterator end_;
-
-  Container container_;
-
+template <typename Container>
+class Enumerate {
  public:
-
-
-  explicit EnumerateProxy(Iterator begin, Iterator end) : begin_(begin), end_(end) {
-  }
-
-  explicit EnumerateProxy(Container container) : container_(container) {
-    begin_ = container_.begin();
-    end_ = container_.end();
-  }
-
-  struct ClassIterator {
-   private:
-    Iterator iter_;
-    size_t pos_;
-
+  class Iterator {
    public:
-    using reference = typename Iterator::reference;
-
-    explicit ClassIterator(Iterator iter, size_t pos = 0) : iter_(iter), pos_(pos) {
+    Iterator(size_t pos, typename Container::iterator &val) {
+      pos_ = pos;
+      ptr_ = val;
     }
-    ClassIterator &operator++() {
+
+    auto operator*() {
+      return std::pair<size_t, typename Container::reference>(pos_, *ptr_);
+    }
+
+    Iterator &operator++() {
       ++pos_;
-      ++iter_;
+      ++ptr_;
       return *this;
     }
-    ClassIterator operator++(int) {
-      auto copy = *this;
+
+    Iterator operator++(int) {
+      Iterator tmp = *this;
       ++pos_;
-      ++iter_;
-      return copy;
-    }
-    std::pair<size_t, typename Iterator::reference> operator*() {
-      return std::pair<size_t, typename Iterator::reference>(pos_, *iter_);
+      ++ptr_;
+      return tmp;
     }
 
-    friend bool operator==(const ClassIterator &first, const ClassIterator &second) {
-      return (first.iter_ == second.iter_);
+    friend bool operator==(Iterator &first, Iterator &second) {
+      return first.pos_ == second.pos_;
     }
-    friend bool operator!=(const ClassIterator &first, const ClassIterator &second) {
-      return (first.iter_ != second.iter_);
+
+    friend bool operator!=(Iterator &first, Iterator &second) {
+      return first.pos_ != second.pos_;
     }
+
+    Iterator &operator=(const Iterator &other) {
+      pos_ = other.pos_;
+      ptr_ = other.ptr_;
+    }
+
+   private:
+    size_t pos_;
+    typename Container::iterator ptr_;
   };
 
-  using iterator = ClassIterator;
+  class ConstIterator {
+   public:
+    ConstIterator(size_t pos, const typename Container::const_iterator &val) : pos_(pos), data_(val) {
+    }
 
-  ClassIterator begin() const {  // NOLINT
-    return ClassIterator(begin_, 0);
+    std::pair<size_t, typename Container::const_reference> operator*() {
+      return {pos_, *data_};
+    }
+
+    ConstIterator &operator++() {
+      ++pos_;
+      ++data_;
+      return *this;
+    }
+
+    ConstIterator operator++(int) {
+      ConstIterator tmp = *this;
+      ++pos_;
+      ++data_;
+      return tmp;
+    }
+
+    friend bool operator==(ConstIterator &first, ConstIterator &second) {
+      return first.pos_ == second.pos_;
+    }
+
+    friend bool operator!=(ConstIterator &first, ConstIterator &second) {
+      return first.pos_ != second.pos_;
+    }
+
+    Iterator &operator=(const ConstIterator &other) {
+      pos_ = other.pos_;
+      data_ = other.data_;
+    }
+
+   private:
+    size_t pos_;
+    typename Container::const_iterator data_;
+  };
+
+  explicit Enumerate(Container &container) : begin_(container.begin()), end_(container.end()) {
+    size_ = 0;
+    for (auto i = std::begin(container); i != std::end(container); ++i) {
+      ++size_;
+    }
   }
-  ClassIterator end() const {  // NOLINT
-    return ClassIterator(end_);
+
+  explicit Enumerate(const Container &container) : cbegin_(container.begin()), cend_(container.end()) {
+    size_ = 0;
+    for (auto i = std::begin(container); i != std::end(container); ++i) {
+      ++size_;
+    }
   }
+
+  Iterator begin() {  // NOLINT
+    return Iterator(0, begin_);
+  }
+
+  Iterator end() {  // NOLINT
+    return Iterator(size_, end_);
+  }
+
+  ConstIterator begin() const {  // NOLINT
+    return ConstIterator(0, cbegin_);
+  }
+
+  ConstIterator end() const {  // NOLINT
+    return ConstIterator(size_, cend_);
+  }
+
+ private:
+  typename Container::iterator begin_;
+  typename Container::iterator end_;
+  typename Container::const_iterator cbegin_;
+  typename Container::const_iterator cend_;
+  size_t size_;
 };
-
-template <class Container>
-auto Enumerate(Container &container) {
-  return EnumerateProxy<typename Container::iterator, Container>(container.begin(), container.end());
-}
-
-template <class Container>
-auto Enumerate(const Container &container) {
-  return EnumerateProxy<typename Container::const_iterator, Container>(container.cbegin(), container.cend());
-}
-
-template <class Container>
-auto Enumerate(Container &&container) {
-  return EnumerateProxy<typename Container::iterator, Container>(container);
-}
-
