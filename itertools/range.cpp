@@ -1,6 +1,8 @@
 #pragma once
 #include <iostream>
 
+#define REVERSE_RANGE_IMPLEMENTED
+
 class IterObject {
 
   struct Iterator {
